@@ -1,0 +1,87 @@
+# ---------------------------------------------------------------------------
+# Competition data — NEVER commit. The source archive is ~265 GB and the
+# extracted DICOM tree is of the same order. GitHub's hard limit is 100 MB per
+# file, and even Git LFS is not appropriate at this scale.
+# Data is obtained from Kaggle; see DATASET.md for the download/extract steps.
+# ---------------------------------------------------------------------------
+
+# Source archive
+*.zip
+
+# Extracted dataset tree (CSVs + DICOM series)
+rsna-knee-abnormality-detection/
+
+# Any other raw/derived data directories
+data/
+raw/
+interim/
+processed/
+*.dcm
+*.npy
+*.npz
+*.h5
+*.hdf5
+*.pt
+*.pth
+*.ckpt
+*.onnx
+
+# Model outputs / experiment tracking
+checkpoints/
+models/
+runs/
+wandb/
+mlruns/
+lightning_logs/
+outputs/
+submissions/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+.installed.cfg
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.conda/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Testing / coverage
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Secrets
+.env
+.env.*
+kaggle.json
+*.pem
