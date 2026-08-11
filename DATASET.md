@@ -149,9 +149,25 @@ Ruled out so far:
 - **A process holding an open handle** — the one candidate exited with no change in
   free space.
 
-The leading remaining explanation is a **Volume Shadow Copy / System Protection
-snapshot** on `F:` still referencing the deleted blocks, which keeps them allocated
-until the snapshot is released. Confirming this needs an **elevated** shell:
+Volume accounting supports this. `F:` is 1,863 GiB with 1,101.2 GiB used:
+
+| Location | Size |
+| --- | --- |
+| `rsna/` extracted tree | ~531 GiB |
+| `Fdownloads/` (unrelated `01_Clinical_Trial-*` archives) | ~130 GiB |
+| `biohub/` | 82 GiB |
+| `stressID/` + `stressIDdataset/` | 10.2 GiB |
+| `System Volume Information` | unreadable (access denied) |
+| **Measurable total** | **~753 GiB** |
+| **Unaccounted** | **~348 GiB** |
+
+The ~348 GiB gap comfortably contains the archive's 246.8 GiB, leaving ~100 GiB for
+`System Volume Information` — consistent with the deleted file's blocks still being
+allocated but no longer reachable through the filesystem.
+
+The leading explanation is therefore a **Volume Shadow Copy / System Protection
+snapshot** on `F:` still referencing those blocks, which keeps them allocated until
+the snapshot is released. Confirming this needs an **elevated** shell:
 
 ```powershell
 vssadmin list shadowstorage
