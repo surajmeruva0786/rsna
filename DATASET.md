@@ -49,42 +49,85 @@ F:\rsna\rsna-knee-abnormality-detection\
 Note that reports contain embedded newlines, so `train.csv` must be parsed with a
 proper CSV reader — a naive line count returns 58,555 rather than the true 4,407 rows.
 
-## Extraction status — pre-verification (2026-08-11)
+## Extraction status: COMPLETE (verified 2026-08-11)
 
-The extraction begun on 2026-08-06 stopped partway on 2026-08-07 and was never
-resumed. Directory-level counts matched expectations:
+**The extraction is complete. No files were missing; nothing needed re-extracting.**
 
-| Check | Extracted | Expected |
-| --- | --- | --- |
-| `train_series/` study dirs | 4,407 | 4,407 |
-| `test_series/` study dirs | 3 | 3 |
-| CSVs present | 5 / 5 | 5 |
+A file-level audit of all 819,640 archive entries against the extracted tree:
 
-Matching *study* counts does not prove completeness — a study directory exists as
-soon as its first DICOM lands, so an interrupted run leaves full-looking directories
-with missing slices inside. A file-level audit against the ZIP central directory is
-therefore required, and is in progress; results are recorded below once it finishes.
+| Metric | Value |
+| --- | --- |
+| Entries in archive | 819,640 |
+| Entries present on disk at exact size | **819,640** |
+| Entries outstanding | **0** |
+| Bytes accounted for | 569,763,893,144 / 569,763,893,144 (100%) |
+| Audit duration | 1,302 s (~22 min) |
 
-## Verification method
+Recorded verbatim in [`extract_report.json`](extract_report.json).
 
-`scripts/verify_extraction.py` walks the ZIP64 central directory and, for each of the
-819,640 entries, stats the corresponding path on disk and compares the byte size
-against the archive's recorded uncompressed size. An entry counts as extracted only
-if it exists **and** its size matches exactly — this catches the truncated final file
-an interrupted extraction leaves behind. The script writes:
+### Why the audit was necessary
 
-- `verify_report.json` — summary counts
-- `todo_entries.txt` — the exact entries needing (re-)extraction, for a resume pass
+Directory-level counts alone (4,407 train studies, 3 test studies, 5/5 CSVs) looked
+correct, but proved nothing: a study directory is created as soon as its *first*
+DICOM lands, so an extraction interrupted midway leaves 4,407 complete-looking
+directories with missing slices inside. The mtimes reinforced the suspicion — the
+run started 2026-08-06 and the tree was last touched 2026-08-07, consistent with an
+interrupted job. Only a per-entry comparison against the archive could distinguish
+"finished" from "stopped near the end", and it returned finished.
 
-Extraction is treated as complete only when both `missing_count` and
-`size_mismatch_count` are zero.
+### Integrity spot-check
+
+Size equality proves nothing about *content*. `scripts/crc_spotcheck.py` samples
+entries at random and compares each file's on-disk CRC-32 against the checksum stored
+in the ZIP central directory:
+
+| Metric | Value |
+| --- | --- |
+| Files checked | 405 (all 5 CSVs + 400 random DICOMs, seeded sample) |
+| Bytes read | 0.27 GiB |
+| CRC mismatches | **0** |
+
+A full CRC pass would mean reading 570 GB and decompressing 265 GB; a seeded random
+sample catches systematic corruption at a negligible fraction of that cost.
+
+## Verification and extraction
+
+`scripts/extract.py` handles both, in one pass over the archive:
+
+1. **Audit** — walk the ZIP64 central directory and, for each of the 819,640 entries,
+   stat the corresponding path on disk. An entry counts as already extracted only if
+   it exists **and** its size matches the archive's recorded uncompressed size
+   exactly. Size equality rather than mere existence is the test, because an
+   interrupted extraction leaves a truncated final file that an existence check would
+   accept.
+2. **Extract** — write only the outstanding entries.
+
+Audit and extraction are fused deliberately: extraction has to do the identical stat
+walk anyway, and on this drive a walk over 819,640 files costs ~15 minutes, so
+running a standalone verifier first would pay that cost twice for no new information.
+Use `--audit-only` when a read-only check is what's wanted.
+
+The script is **idempotent and resumable**. Re-running after an interruption costs
+one stat walk plus only the remaining bytes, never a full re-extraction. Each file is
+written to a `.part` sibling and atomically renamed into place only once fully
+written, so an interruption of the script itself cannot leave a half-written file for
+a later run to mistake for a good one.
+
+Outputs `extract_report.json` (summary counts) and `todo_entries.txt` (outstanding
+entries). Extraction is complete only when `entries_todo` is zero.
 
 ## Disk budget
 
-The drive held 762 GB free with the partial extraction in place. A full extraction
-needs ~570 GB total; deleting the 265 GB archive afterwards recovers that space.
-The archive is only safe to delete once verification reports zero missing and zero
-mismatched entries.
+| | |
+| --- | --- |
+| Free space (with archive present) | 762 GB |
+| Full extraction requires | 570 GB |
+| Worst-case headroom remaining | ~192 GB |
+
+The full tree and the archive **do** coexist on the drive, so the archive never needed
+to be removed to make room. With the audit reporting zero outstanding entries and a
+clean CRC sample, the archive is now redundant and safe to delete; doing so recovers
+265 GB. See "Archive disposition" below.
 
 ## Reproducing the download
 
