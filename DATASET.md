@@ -129,6 +129,40 @@ to be removed to make room. With the audit reporting zero outstanding entries an
 clean CRC sample, the archive is now redundant and safe to delete; doing so recovers
 265 GB. See "Archive disposition" below.
 
+## Archive disposition
+
+`rsna-knee-abnormality-detection.zip` was **deleted on 2026-08-11**, after the audit
+reported zero outstanding entries and the CRC sample came back clean. The extracted
+tree is now the only copy of the data on this machine.
+
+### Open issue: 265 GB was not reclaimed
+
+Deleting the archive did **not** return its space to the volume. Free space on `F:`
+read 761.83 GiB both before and after the delete, and the file is genuinely unlinked
+(absent from the directory, absent from the Recycle Bin, which holds only 4.6 MB).
+
+Ruled out so far:
+
+- **Recycle Bin** — 4.6 MB total; Git Bash `rm` unlinks rather than recycling.
+- **A second copy elsewhere** — no RSNA archive under `F:\rsna` or `F:\Fdownloads`
+  (the large zips there are unrelated `01_Clinical_Trial-*` files).
+- **A process holding an open handle** — the one candidate exited with no change in
+  free space.
+
+The leading remaining explanation is a **Volume Shadow Copy / System Protection
+snapshot** on `F:` still referencing the deleted blocks, which keeps them allocated
+until the snapshot is released. Confirming this needs an **elevated** shell:
+
+```powershell
+vssadmin list shadowstorage
+vssadmin list shadows
+```
+
+If shadow storage on `F:` accounts for the missing 265 GB, reclaiming it means
+deleting the relevant snapshots (or reducing `shadowstorage` maxsize) — a decision to
+make deliberately, since it discards restore points. **This does not affect the
+dataset**, which is fully extracted and verified; it only concerns free space.
+
 ## Reproducing the download
 
 The data is not redistributable through this repo. Fetch it from Kaggle:
