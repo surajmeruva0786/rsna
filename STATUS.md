@@ -10,10 +10,12 @@ Last updated: 2026-08-14, during fold-0 training.
 | Report → weak labels | **done** | `work/labels.csv`, 0.756 macro AUC vs gold |
 | DICOM → uint8 cache | **done** | 21.2 GiB, 4,407 studies, 121.2 min |
 | Test split cache | **done** | 3 studies |
-| Fold-0 training | **running** | `work/runs/run1/fold0.pt` |
-| Remaining folds | not started | budget decision pending epoch timing |
-| `submission.csv` | not yet produced | needs a trained fold |
+| Training, 5 folds × 10 epochs | **running** (detached, ~10 h) | `work/runs/run1/fold*.pt` |
+| `submission.csv` | not yet produced | needs fold 0 to finish (~2 h) |
 | Kaggle notebook | **built**, untested end-to-end | `kaggle/submission.ipynb` |
+
+Measured: ~10 min/epoch, ~2 h/fold, 2.51 GiB peak at batch 3 (running at batch 2 for
+headroom against the two other GPU jobs).
 
 ## Answering the original question
 
@@ -56,12 +58,23 @@ The OOF figure to trust is the gold-subset one, not the weak-label one.
 path, but it has not yet been run against real Kaggle paths. That needs a trained
 checkpoint uploaded as a Dataset.
 
-## A bug worth remembering
+## Bugs worth remembering
 
-The automation chain waited for an `EXIT=` sentinel appended by the shell that launched
+**Completion signals must come from the process whose completion they report.** The
+automation chain waited for an `EXIT=` sentinel appended by the shell that launched
 preprocessing. That shell was killed; the sentinel never arrived; the chain waited
-indefinitely while preprocessing had in fact completed cleanly two hours earlier. Nothing
-was lost — the cache was intact and verified byte-for-byte — but ~2 h of GPU time was.
+indefinitely while preprocessing had in fact completed cleanly two hours earlier. The
+cache was intact and verified byte-for-byte, but ~2 h of GPU idle time was lost. Fixed in
+`scripts/run_after_preprocess.sh`, which now waits on a line `preprocess.py` prints
+itself.
 
-Lesson: a completion signal should come from the process whose completion it reports.
-Fixed in `scripts/run_after_preprocess.sh`.
+**Long runs must not be children of a transient shell.** Shell-parented background jobs
+were killed at turn boundaries — one training process died ~3 minutes in, before its
+first epoch. Training now launches via `Start-Process` as a detached Windows process
+(PID recorded in `C:\rsna_cache\train.pid`) and survives independently.
+
+**Bugs that hide behind an epoch boundary are expensive.** The validation loop unpacked
+three values while the dataset had begun yielding four — adding the per-sample gold
+weight widened the tuple, and the validation set has labels too. The crash landed at the
+*end* of epoch 1, so a one-line error cost a full epoch to surface. `--subset N` now runs
+the entire loop, checkpointing and both metric paths included, in under a minute.

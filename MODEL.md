@@ -105,12 +105,46 @@ silently produce the same artefacts.
 
 ```bash
 export RSNA_CACHE=C:/rsna_cache
-python scripts/train.py --folds 5 --only-fold 0 --epochs 10 --batch 3 --accum 5 --out run1
+python scripts/train.py --folds 5 --epochs 10 --batch 2 --accum 8 --out run1
 python scripts/predict.py --run run1 --split test --out submission.csv
 ```
 
-Fold 0 is trained first to measure real epoch time on the shared GPU before committing to
-a full 5-fold budget; its checkpoint alone is already enough to produce a submission.
+Folds run sequentially and each writes its checkpoint on completion, so fold 0 alone
+(~2 h) is already enough to produce a submission and a crash at fold 3 still leaves three
+usable models.
+
+### Measured cost
+
+| | |
+| --- | --- |
+| Peak VRAM | 2.51 GiB at batch 3; batch 2 used instead for headroom |
+| Epoch | ~10 min (3,525 train / 882 val) |
+| Fold | ~2 h at 10 epochs |
+| Full 5-fold | ~10 h |
+
+### Launch it detached
+
+Long runs **must not** be children of a transient shell. Use a detached process:
+
+```powershell
+Start-Process python -ArgumentList "scripts/train.py",... -WindowStyle Hidden -PassThru
+```
+
+Two runs were lost to this: a shell-parented training process was killed ~3 minutes in,
+and the preprocessing wrapper was killed at the moment it finished, which cost the
+completion signal a dependent job was waiting on.
+
+### Debugging cheaply
+
+`--subset N` trains on N studies, always including the 58 gold ones so the gold-metric
+path is covered. The full loop — checkpointing, OOF assembly, both metrics — runs in
+under a minute.
+
+This exists because of a real cost. The validation loop unpacked three values while the
+dataset had started yielding four (adding the per-sample gold weight widened the tuple,
+and the validation set has labels too). The crash landed at the *end* of epoch 1, so a
+one-line bug cost a full epoch to surface. Bugs that hide behind an epoch boundary are
+worth a flag that removes the epoch boundary.
 
 ## Results
 
