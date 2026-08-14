@@ -43,14 +43,30 @@ def main() -> int:
     ap.add_argument("--slices", type=int, default=16)
     ap.add_argument("--batch", type=int, default=2)
     ap.add_argument("--out", default="submission.csv")
+    ap.add_argument("--folds", default="",
+                    help="comma-separated fold indices to ensemble, e.g. 0,1. "
+                         "Default is every fold*.pt present -- which is WRONG while "
+                         "training is still running, because a fold's checkpoint is "
+                         "written on every validation improvement, so an in-progress "
+                         "fold already has a half-trained file on disk.")
     args = ap.parse_args()
 
     device = require_cuda()
     rundir = WORK / "runs" / args.run
-    ckpts = sorted(rundir.glob("fold*.pt"))
+    if args.folds:
+        want = [int(f) for f in args.folds.split(",")]
+        ckpts = [rundir / f"fold{f}.pt" for f in want]
+        missing = [c for c in ckpts if not c.exists()]
+        if missing:
+            raise SystemExit(f"missing checkpoints: {[c.name for c in missing]}")
+    else:
+        ckpts = sorted(rundir.glob("fold*.pt"))
     if not ckpts:
         raise SystemExit(f"no fold checkpoints under {rundir}")
     print(f"ensembling {len(ckpts)} folds: {[c.name for c in ckpts]}")
+    for c in ckpts:
+        m = torch.load(c, map_location="cpu", weights_only=False)
+        print(f"  {c.name}: val macro AUC {m.get('auc', float('nan')):.4f}")
 
     index = pd.read_csv(CACHE / f"{args.split}_index.csv")
     slot_cols = [f"slot{i}" for i in range(N_SLOTS)]
