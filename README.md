@@ -17,6 +17,7 @@ Competition brief, data description, and rules are in [`overview.txt`](overview.
 
 ```
 .
+├── STATUS.md               # what is done, what is running, open caveats
 ├── DATASET.md              # dataset state, layout, verification results
 ├── LABELS.md               # report -> label weak supervision, and its validation
 ├── PREPROCESSING.md        # DICOM -> uint8 cache: slots, slice order, normalisation

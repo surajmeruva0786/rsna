@@ -91,11 +91,28 @@ absent slots are correctly flagged.
 | | |
 | --- | --- |
 | Benchmark | 60 studies / 1.9 min at 6 workers |
-| Full train split | ~2.3 h, 4,407 studies |
-| Output | 21.2 GiB |
+| Full train split | **121.2 min**, 4,407 studies (predicted ~140 min) |
+| Test split | 0.3 min, 3 studies |
+| Output | 21,228,060,672 bytes — exactly the predicted size |
 | Compression vs. raw | ~27× |
 
 Six workers rather than twelve: the machine is running two other training jobs.
+
+### Realised slot coverage
+
+| slot | plane | fluid-sens. | studies with this slot |
+| --- | --- | --- | --- |
+| 0 | Axial | no | 857 |
+| 1 | Coronal | no | 3,406 |
+| 2 | Sagittal | no | 4,266 |
+| 3 | Axial | yes | **4,407** (every study) |
+| 4 | Coronal | yes | 4,248 |
+| 5 | Sagittal | yes | 4,150 |
+
+21,334 slots filled across 4,407 studies — **mean 4.84 slots/study**, and **zero studies
+with no usable series**. Coverage is uneven enough to justify the masked pooling: axial
+non-fluid exists for only 19% of studies, so a model that assumed six slots would be
+training on mostly-empty tensors for that channel.
 
 ### One bug worth recording
 
