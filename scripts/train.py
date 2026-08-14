@@ -144,6 +144,8 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--amp", action="store_true", help="fp16 autocast (slow on Pascal)")
     ap.add_argument("--gold-weight", type=float, default=5.0)
+    ap.add_argument("--subset", type=int, default=0,
+                    help="debug: train on only N studies, to smoke-test the full loop cheaply")
     ap.add_argument("--out", default="run1")
     args = ap.parse_args()
 
@@ -165,6 +167,12 @@ def main() -> int:
     usable = masks.sum(axis=1) > 0
     print(f"studies: {len(index)} total, {usable.sum()} with >=1 usable series, {is_gold.sum()} gold")
     keep = np.where(usable)[0]
+    if args.subset:
+        # Keep the gold studies in the subset so the gold-subset metric path is exercised.
+        gold_rows = keep[is_gold[keep] == 1]
+        rest = keep[is_gold[keep] == 0][: max(args.subset - len(gold_rows), 0)]
+        keep = np.sort(np.concatenate([gold_rows, rest]))
+        print(f"DEBUG subset: {len(keep)} studies")
 
     shape = (len(index), N_SLOTS, args.slices, args.cache_size, args.cache_size)
     mm_path = CACHE / f"train_{args.cache_size}.u8"
@@ -226,7 +234,9 @@ def main() -> int:
             model.eval()
             preds = []
             with torch.no_grad():
-                for x, m, _ in dl_va:
+                # Starred: the dataset yields a sample weight after the label whenever
+                # labels are present, and the validation set has labels too.
+                for x, m, *_ in dl_va:
                     with torch.amp.autocast("cuda", enabled=args.amp):
                         preds.append(torch.sigmoid(model(x.to(device), m.to(device))).float().cpu().numpy())
             p = np.concatenate(preds)
