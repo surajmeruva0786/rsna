@@ -18,10 +18,14 @@ Competition brief, data description, and rules are in [`overview.txt`](overview.
 ```
 .
 ├── DATASET.md              # dataset state, layout, verification results
+├── LABELS.md               # report -> label weak supervision, and its validation
 ├── extract_report.json     # machine-readable audit output
 ├── scripts/
 │   ├── extract.py          # resumable, idempotent audit + extraction
-│   └── crc_spotcheck.py    # CRC-32 integrity sampling
+│   ├── crc_spotcheck.py    # CRC-32 integrity sampling
+│   ├── report_labeler.py   # multilingual report -> 12 targets
+│   ├── validate_labeler.py # scores the labeller against the 58 gold studies
+│   └── make_labels.py      # writes work/labels.csv (gold where present, weak elsewhere)
 ├── overview.txt            # competition overview
 ├── data.txt                # data description
 └── rules.txt               # competition rules
@@ -35,8 +39,11 @@ tree lives beside this repo at `rsna-knee-abnormality-detection/` and is ignored
 `ACL`, `MCL`, `Medial Meniscus`, `Lateral Meniscus`, `Medial OA`, `Lateral OA`,
 `PF OA`, `Effusion`, `Synovitis`, `Baker's`, `Contusion`, `Fracture`
 
-`train.csv` additionally carries a free-text `Report` column (Spanish radiology
-reports), which is a usable weak-supervision signal for the label columns.
+Only **58 of the 4,407** training studies carry these labels. The other 4,349 carry only
+a free-text `Report`, in at least nine languages (English, Spanish, Turkish, Greek,
+German, Dutch, French, Portuguese, Italian). Turning those reports into labels is the
+prerequisite for using the training set at all — see [`LABELS.md`](LABELS.md). Reports
+exist only at training time; the test set is DICOMs and study IDs.
 
 > **Parsing note:** the reports contain embedded newlines. `train.csv` must be read
 > with a real CSV parser — a line count returns 58,555 against a true 4,407 rows, and
@@ -72,6 +79,16 @@ python scripts/crc_spotcheck.py
 
 `extract.py` exits `0` when the destination matches the archive and `1` when work
 remains, so it can gate a pipeline.
+
+## Building the labels
+
+```bash
+python scripts/validate_labeler.py   # score the labeller against the 58 gold studies
+python scripts/make_labels.py        # write work/labels.csv for all 4,407
+```
+
+Current labeller agreement with gold: **0.756 macro AUC**. Method, language coverage and
+the reason that number cannot reach 1.0 are in [`LABELS.md`](LABELS.md).
 
 ## Getting the data
 
