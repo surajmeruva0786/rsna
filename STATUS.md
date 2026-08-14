@@ -11,8 +11,9 @@ Last updated: 2026-08-14, during fold-0 training.
 | DICOM → uint8 cache | **done** | 21.2 GiB, 4,407 studies, 121.2 min |
 | Test split cache | **done** | 3 studies |
 | Fold 0 | **done** — val macro AUC **0.7753** | `work/runs/run1/fold0.pt` |
-| Folds 1–4 | running (detached, ~7 h left) | `work/runs/run1/fold*.pt` |
-| `submission.csv` | **produced**, format validated | `submission.csv` |
+| Fold 1 | **done** — val macro AUC **0.7829** | `work/runs/run1/fold1.pt` |
+| Folds 2–4 | running (fold 2 at epoch 2/10, ~5 h left) | `work/runs/run1/fold*.pt` |
+| `submission.csv` | **produced** from folds 0+1, format validated | `submission.csv` |
 | Kaggle notebook | **built**, untested end-to-end | `kaggle/submission.ipynb` |
 
 Measured: ~10 min/epoch, ~1.7 h/fold, 1.97 GiB peak at batch 2 (2.51 GiB at batch 3, too
@@ -77,6 +78,13 @@ itself.
 were killed at turn boundaries — one training process died ~3 minutes in, before its
 first epoch. Training now launches via `Start-Process` as a detached Windows process
 (PID recorded in `C:\rsna_cache\train.pid`) and survives independently.
+
+**A checkpoint on disk is not a finished model.** `train.py` writes a fold's checkpoint on
+every validation improvement, so a fold still training already has a `fold{N}.pt` file.
+`predict.py` globbed `fold*.pt`, so running it mid-training would have averaged a
+half-trained model into the ensemble — silently, with no error and no obvious symptom in
+the output. `--folds` now selects explicit indices and the ensemble prints each member's
+recorded validation AUC before predicting.
 
 **Bugs that hide behind an epoch boundary are expensive.** The validation loop unpacked
 three values while the dataset had begun yielding four — adding the per-sample gold

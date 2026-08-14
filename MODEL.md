@@ -167,7 +167,22 @@ Training loss falls monotonically while validation AUC peaks at epoch 6 and drif
 after — textbook mild overfitting, and confirmation that 10 epochs is roughly the right
 budget rather than a number that needed guessing. The saved checkpoint is epoch 6's.
 
-Folds 1–4 are still running.
+### Fold 1 (complete)
+
+Peaks at epoch 7, **0.7829** — same shape, same plateau, marginally higher. Two
+independent folds landing within 0.008 of each other suggests the split is not driving
+the result.
+
+| epoch | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| val AUC | 0.6611 | 0.6983 | 0.7289 | 0.7684 | 0.7810 | 0.7805 | **0.7829** | 0.7784 | 0.7800 | 0.7800 |
+
+Folds 2–4 are still running.
+
+> **Ensembling mid-training is a trap.** A fold's checkpoint is written on every
+> validation improvement, so an in-progress fold already has a `fold{N}.pt` on disk.
+> Pass `--folds 0,1` to `predict.py` to ensemble only completed folds; the default glob
+> would quietly average in a half-trained model.
 
 ### Reading these numbers honestly
 
