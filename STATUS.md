@@ -10,12 +10,17 @@ Last updated: 2026-08-14, during fold-0 training.
 | Report → weak labels | **done** | `work/labels.csv`, 0.756 macro AUC vs gold |
 | DICOM → uint8 cache | **done** | 21.2 GiB, 4,407 studies, 121.2 min |
 | Test split cache | **done** | 3 studies |
-| Training, 5 folds × 10 epochs | **running** (detached, ~10 h) | `work/runs/run1/fold*.pt` |
-| `submission.csv` | not yet produced | needs fold 0 to finish (~2 h) |
+| Fold 0 | **done** — val macro AUC **0.7753** | `work/runs/run1/fold0.pt` |
+| Folds 1–4 | running (detached, ~7 h left) | `work/runs/run1/fold*.pt` |
+| `submission.csv` | **produced**, format validated | `submission.csv` |
 | Kaggle notebook | **built**, untested end-to-end | `kaggle/submission.ipynb` |
 
-Measured: ~10 min/epoch, ~2 h/fold, 2.51 GiB peak at batch 3 (running at batch 2 for
-headroom against the two other GPU jobs).
+Measured: ~10 min/epoch, ~1.7 h/fold, 1.97 GiB peak at batch 2 (2.51 GiB at batch 3, too
+close to the ~3.3 GiB free alongside the two other GPU jobs).
+
+Fold 0 learning curve: 0.6564 → 0.7753 by epoch 6, then mild overfitting. The image model
+is clearly extracting signal from pixels — chance is 0.5 and it cleared 0.65 in a single
+epoch.
 
 ## Answering the original question
 

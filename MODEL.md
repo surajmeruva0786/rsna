@@ -148,12 +148,38 @@ worth a flag that removes the epoch boundary.
 
 ## Results
 
-_Pending — fold 0 is training. This section will record OOF macro AUC against the weak
-labels, the separate figure against the 58 gold studies, and per-target AUCs._
+### Fold 0 (complete)
 
-The gold-subset number is the one to trust. The weak-label OOF figure measures agreement
-with the report labeller, which is itself only ~0.756 against gold — a model that scored
-1.0 there would have learned to imitate the labeller's mistakes.
+| epoch | loss | val macro AUC |
+| --- | --- | --- |
+| 1 | 0.5513 | 0.6564 |
+| 2 | 0.4840 | 0.6973 |
+| 3 | 0.4678 | 0.7505 |
+| 4 | 0.4512 | 0.7666 |
+| 5 | 0.4333 | 0.7690 |
+| 6 | 0.4161 | **0.7753** |
+| 7 | 0.3943 | 0.7751 |
+| 8 | 0.3762 | 0.7639 |
+| 9 | 0.3590 | 0.7667 |
+| 10 | 0.3529 | 0.7702 |
+
+Training loss falls monotonically while validation AUC peaks at epoch 6 and drifts down
+after — textbook mild overfitting, and confirmation that 10 epochs is roughly the right
+budget rather than a number that needed guessing. The saved checkpoint is epoch 6's.
+
+Folds 1–4 are still running.
+
+### Reading these numbers honestly
+
+**0.7753 is agreement with the report labeller on held-out studies, not accuracy.** The
+labeller is itself only ~0.756 against gold, so a model scoring 1.0 here would have
+learned to reproduce the labeller's mistakes perfectly. The figure confirms the image
+model is extracting real signal from pixels — chance is 0.5, and it reached 0.65 in one
+epoch — but it is not the competition metric.
+
+The gold-subset OOF figure, computed over the 58 hand-annotated studies once all folds
+finish, is the meaningful one, because those labels were produced the same way the test
+labels were.
 
 ## Submission
 
