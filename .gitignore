@@ -26,6 +26,10 @@ processed/
 *.ckpt
 *.onnx
 
+# Derived artefacts: weak labels, preprocessed cache, fold weights, OOF matrices.
+# All are regenerable from the scripts; the cache alone is ~21 GB.
+work/
+
 # Model outputs / experiment tracking
 checkpoints/
 models/
