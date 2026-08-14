@@ -20,6 +20,7 @@ Competition brief, data description, and rules are in [`overview.txt`](overview.
 ├── DATASET.md              # dataset state, layout, verification results
 ├── LABELS.md               # report -> label weak supervision, and its validation
 ├── PREPROCESSING.md        # DICOM -> uint8 cache: slots, slice order, normalisation
+├── MODEL.md                # architecture, augmentation constraints, results
 ├── extract_report.json     # machine-readable audit output
 ├── scripts/
 │   ├── extract.py          # resumable, idempotent audit + extraction
@@ -28,7 +29,13 @@ Competition brief, data description, and rules are in [`overview.txt`](overview.
 │   ├── validate_labeler.py # scores the labeller against the 58 gold studies
 │   ├── make_labels.py      # writes work/labels.csv (gold where present, weak elsewhere)
 │   ├── preprocess.py       # DICOM -> fixed-shape uint8 memmap cache
-│   └── qc_cache.py         # visual QC montage of the cache
+│   ├── qc_cache.py         # visual QC montage of the cache
+│   ├── model.py            # slot encoder + masked attention pooling
+│   ├── train.py            # cross-validated training, CUDA required
+│   └── predict.py          # fold ensemble -> submission.csv
+├── kaggle/
+│   ├── kaggle_inference.py # self-contained offline inference
+│   └── build_notebook.py   # wraps the above into submission.ipynb
 ├── overview.txt            # competition overview
 ├── data.txt                # data description
 └── rules.txt               # competition rules
@@ -107,6 +114,21 @@ python scripts/qc_cache.py --study 0 --out work/qc0.png     # look at it
 
 Slot layout, slice ordering and per-slice normalisation are in
 [`PREPROCESSING.md`](PREPROCESSING.md).
+
+## Training and submission
+
+```bash
+python scripts/train.py --folds 5 --only-fold 0 --epochs 10 --batch 3 --accum 5 --out run1
+python scripts/predict.py --run run1 --split test --out submission.csv
+python kaggle/build_notebook.py     # -> kaggle/submission.ipynb
+```
+
+CUDA is required and asserted — no silent CPU fallback. Architecture, the reason
+horizontal flip is excluded, and results are in [`MODEL.md`](MODEL.md).
+
+> **Submission note:** this is a code competition. Kaggle scores a *notebook* run against
+> ~1,300 hidden test studies; the local `submission.csv` only validates the format against
+> the three public example studies. `kaggle/submission.ipynb` is the artefact that scores.
 
 ## Getting the data
 
