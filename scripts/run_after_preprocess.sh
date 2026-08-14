@@ -11,15 +11,18 @@ CACHE="${RSNA_CACHE:-C:/rsna_cache}"
 LOG="$CACHE/prep_train.log"
 EXPECTED_STUDIES=4407
 
+# Wait on a line preprocess.py itself prints, not on an exit code appended by whatever
+# wrapper launched it. An earlier version waited for an "EXIT=" sentinel written by the
+# calling shell; when that shell was killed the sentinel never arrived, and the chain sat
+# waiting forever even though preprocessing had completed successfully 2 hours earlier.
 echo "[chain] waiting for preprocessing to finish..."
-while ! grep -q "^EXIT=" "$LOG" 2>/dev/null; do
+while ! grep -q "^total .* min" "$LOG" 2>/dev/null; do
   sleep 30
 done
+echo "[chain] preprocessing reported completion"
 
-status=$(grep "^EXIT=" "$LOG" | tail -1)
-echo "[chain] preprocessing finished: $status"
-if [ "$status" != "EXIT=0" ]; then
-  echo "[chain] ABORT: preprocessing did not exit cleanly"
+if grep -qE "Traceback|Error" "$LOG"; then
+  echo "[chain] ABORT: preprocessing log contains errors"
   exit 1
 fi
 
