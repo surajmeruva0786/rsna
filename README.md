@@ -19,13 +19,16 @@ Competition brief, data description, and rules are in [`overview.txt`](overview.
 .
 ├── DATASET.md              # dataset state, layout, verification results
 ├── LABELS.md               # report -> label weak supervision, and its validation
+├── PREPROCESSING.md        # DICOM -> uint8 cache: slots, slice order, normalisation
 ├── extract_report.json     # machine-readable audit output
 ├── scripts/
 │   ├── extract.py          # resumable, idempotent audit + extraction
 │   ├── crc_spotcheck.py    # CRC-32 integrity sampling
 │   ├── report_labeler.py   # multilingual report -> 12 targets
 │   ├── validate_labeler.py # scores the labeller against the 58 gold studies
-│   └── make_labels.py      # writes work/labels.csv (gold where present, weak elsewhere)
+│   ├── make_labels.py      # writes work/labels.csv (gold where present, weak elsewhere)
+│   ├── preprocess.py       # DICOM -> fixed-shape uint8 memmap cache
+│   └── qc_cache.py         # visual QC montage of the cache
 ├── overview.txt            # competition overview
 ├── data.txt                # data description
 └── rules.txt               # competition rules
@@ -89,6 +92,21 @@ python scripts/make_labels.py        # write work/labels.csv for all 4,407
 
 Current labeller agreement with gold: **0.756 macro AUC**. Method, language coverage and
 the reason that number cannot reach 1.0 are in [`LABELS.md`](LABELS.md).
+
+## Building the image cache
+
+Training never reads the DICOM tree. One pass reduces it to a fixed-shape `uint8` memmap
+(~21 GiB, ~27× smaller), keyed by six plane × fluid-sensitivity slots per study:
+
+```bash
+export RSNA_CACHE=C:/rsna_cache          # keep the cache off the HDD
+python scripts/preprocess.py --split train --workers 6      # ~2.3 h
+python scripts/preprocess.py --split test  --workers 6
+python scripts/qc_cache.py --study 0 --out work/qc0.png     # look at it
+```
+
+Slot layout, slice ordering and per-slice normalisation are in
+[`PREPROCESSING.md`](PREPROCESSING.md).
 
 ## Getting the data
 
