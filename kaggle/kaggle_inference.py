@@ -17,6 +17,7 @@ Attach the trained folds as a Kaggle Dataset and point WEIGHTS_DIR at it.
 from __future__ import annotations
 
 import os
+import time
 from pathlib import Path
 
 import cv2
@@ -29,9 +30,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset
 
-COMP = Path("/kaggle/input/rsna-knee-abnormality-detection")
-WEIGHTS_DIR = Path("/kaggle/input/rsna-knee-folds")
-OUT = Path("/kaggle/working/submission.csv")
+# Kaggle paths by default. The env overrides exist so this exact code path can be run
+# against the local dataset before submission -- a notebook that has only ever been
+# compiled, never executed, is an untested notebook, and the competition gives no
+# feedback beyond a failed run.
+COMP = Path(os.environ.get("RSNA_COMP", "/kaggle/input/rsna-knee-abnormality-detection"))
+WEIGHTS_DIR = Path(os.environ.get("RSNA_WEIGHTS", "/kaggle/input/rsna-knee-folds"))
+OUT = Path(os.environ.get("RSNA_OUT", "/kaggle/working/submission.csv"))
 
 TARGETS = [
     "ACL", "MCL", "Medial Meniscus", "Lateral Meniscus", "Medial OA", "Lateral OA",
@@ -224,6 +229,7 @@ def main():
 
     pred = np.zeros((len(studies), len(TARGETS)), np.float32)
     seen = np.zeros(len(studies), bool)
+    t0, done = time.time(), 0
     with torch.no_grad():
         for x, mask, idx in dl:
             if size != x.shape[-1]:
@@ -234,6 +240,15 @@ def main():
             acc = sum(torch.sigmoid(m(x, mask)) for m in models) / len(models)
             pred[idx.numpy()] = acc.cpu().numpy()
             seen[idx.numpy()] = mask.sum(dim=1).cpu().numpy() > 0
+
+            # Progress and a running ETA. The notebook has a hard 9h wall and no way to
+            # checkpoint, so a run that will not finish should be visible early rather
+            # than at the timeout.
+            done += len(idx)
+            if done % 100 < len(idx) or done == len(studies):
+                el = time.time() - t0
+                print(f"  {done}/{len(studies)}  {el/60:.1f}m elapsed  "
+                      f"ETA {el/done*(len(studies)-done)/60:.1f}m", flush=True)
 
     if (~seen).any():
         print(f"{(~seen).sum()} studies had no decodable series; using training prior")
