@@ -10,10 +10,29 @@ Last updated: 2026-08-14, during fold-0 training.
 | Report → weak labels | **done** | `work/labels.csv`, 0.756 macro AUC vs gold |
 | DICOM → uint8 cache | **done** | 21.2 GiB, 4,407 studies, 121.2 min |
 | Test split cache | **done** | 3 studies |
-| Folds 0–3 | **done** — 0.7753 / 0.7829 / 0.7658 / 0.7899 | `work/runs/run1/fold{0..3}.pt` |
-| Fold 4 | running, epoch 6/10 (~40 min) | `work/runs/run1/fold4.pt` |
-| `submission.csv` | **produced** from folds 0–3, format validated | `submission.csv` |
+| Training, 5 folds × 10 epochs | **done** (~9 h) | `work/runs/run1/fold{0..4}.pt` |
+| OOF evaluation | **done** | `scripts/evaluate.py` |
+| `submission.csv` | **produced** from all 5 folds, format validated | `submission.csv` |
 | Kaggle notebook | **built**, untested end-to-end | `kaggle/submission.ipynb` |
+
+## Results
+
+Fold validation macro AUC: 0.7753 / 0.7829 / 0.7658 / 0.7899 / 0.7776 — mean 0.7783,
+spread 0.024. OOF over all 4,407 studies: **0.7748** against the weak labels.
+
+On the 58 gold studies — the honest estimate, since those labels were made by reading
+images the way the test labels were:
+
+| | macro AUC |
+| --- | --- |
+| **Image model (OOF)** | **0.6910**, 95% CI [0.6329, 0.7470] |
+| Report labeller | 0.7558 (training-time only) |
+| Chance | 0.5000 |
+
+Well above chance, well below a winning score. The model beats its own text teacher on
+diffuse findings (Effusion +0.078, Contusion +0.041) and loses on small localised ones
+(Medial Meniscus −0.221, Fracture −0.169) — the predictable signature of 16 sampled
+slices at 224×224 on a 4 GiB GPU. Full breakdown in [`MODEL.md`](MODEL.md).
 
 Measured: ~10 min/epoch, ~1.7 h/fold, 1.97 GiB peak at batch 2 (2.51 GiB at batch 3, too
 close to the ~3.3 GiB free alongside the two other GPU jobs).

@@ -175,9 +175,9 @@ budget rather than a number that needed guessing. The saved checkpoint is epoch 
 | 1 | 0.6611 | 0.6983 | 0.7289 | 0.7684 | 0.7810 | 0.7805 | **0.7829** | 0.7784 | 0.7800 | 0.7800 | 0.7829 |
 | 2 | 0.6256 | 0.6988 | — | — | — | — | — | **0.7658** | 0.7598 | 0.7604 | 0.7658 |
 | 3 | 0.6272 | 0.7133 | 0.7422 | 0.7559 | 0.7747 | 0.7802 | **0.7899** | 0.7870 | 0.7836 | 0.7843 | 0.7899 |
-| 4 | 0.6193 | 0.7069 | 0.7283 | 0.7522 | 0.7701 | 0.7729 | | | | | running |
+| 4 | 0.6193 | 0.7069 | 0.7283 | 0.7522 | 0.7701 | 0.7729 | **0.7776** | 0.7752 | 0.7741 | 0.7767 | 0.7776 |
 
-**Mean of completed folds: 0.7785, spread 0.024.**
+**Mean 0.7783, spread 0.024. OOF macro AUC over all 4,407 studies: 0.7748.**
 
 Every fold traces the same curve — rapid gain to ~0.75 by epoch 4–5, peak at epoch 6–7,
 then mild overfitting as training loss keeps falling. Five independent splits agreeing
@@ -189,17 +189,61 @@ and it confirms 10 epochs was the right budget without needing a search.
 > Pass `--folds 0,1` to `predict.py` to ensemble only completed folds; the default glob
 > would quietly average in a half-trained model.
 
-### Reading these numbers honestly
+### The honest number: 0.6910
 
-**0.7753 is agreement with the report labeller on held-out studies, not accuracy.** The
-labeller is itself only ~0.756 against gold, so a model scoring 1.0 here would have
-learned to reproduce the labeller's mistakes perfectly. The figure confirms the image
-model is extracting real signal from pixels — chance is 0.5, and it reached 0.65 in one
-epoch — but it is not the competition metric.
+`python scripts/evaluate.py --run run1`
 
-The gold-subset OOF figure, computed over the 58 hand-annotated studies once all folds
-finish, is the meaningful one, because those labels were produced the same way the test
-labels were.
+**0.7748 is agreement with the report labeller, not accuracy.** The labeller is itself
+only 0.756 against gold, so a model scoring 1.0 there would have reproduced its mistakes
+perfectly. The estimate that matters is over the 58 gold studies, whose labels were
+produced the way the test labels were — by reading images, not reports:
+
+| | macro AUC |
+| --- | --- |
+| **Image model (OOF, gold subset)** | **0.6910**, 95% CI [0.6329, 0.7470] |
+| Report labeller on the same 58 | 0.7558 — *training-time only, no reports at test time* |
+| Chance | 0.5000 |
+
+The interval is bootstrapped over studies, because 58 samples cannot support a bare point
+estimate — the rarest target has 9 positives. The lower bound clears chance comfortably,
+so the model is genuinely reading the images rather than exploiting a prior.
+
+### Where the model beats its teacher, and where it doesn't
+
+| target | pos | model | labeller | Δ |
+| --- | --- | --- | --- | --- |
+| Effusion | 35 | 0.709 | 0.631 | **+0.078** |
+| Contusion | 19 | 0.709 | 0.667 | **+0.041** |
+| Synovitis | 27 | 0.714 | 0.704 | **+0.010** |
+| Baker's | 12 | 0.842 | 0.845 | −0.003 |
+| Lateral Meniscus | 23 | 0.732 | 0.749 | −0.017 |
+| Lateral OA | 11 | 0.712 | 0.756 | −0.044 |
+| Medial OA | 15 | 0.659 | 0.728 | −0.069 |
+| PF OA | 21 | 0.653 | 0.761 | −0.108 |
+| ACL | 24 | 0.759 | 0.890 | −0.131 |
+| MCL | 9 | 0.612 | 0.757 | −0.145 |
+| Fracture | 18 | 0.572 | 0.742 | −0.169 |
+| Medial Meniscus | 26 | 0.619 | 0.840 | −0.221 |
+
+The pattern is coherent. The model **beats** the text teacher on **Effusion, Contusion,
+Synovitis** — diffuse, high-contrast findings that occupy many voxels and are obvious in
+fluid-sensitive sequences. It **loses** on **Medial Meniscus, Fracture, MCL, ACL** — where
+a radiologist states the finding in one sentence but the imaging evidence is a few
+millimetres of altered signal on two or three slices.
+
+That is exactly the failure mode a weakly-supervised pipeline predicts: 16 sampled slices
+at 224×224 is ample for "is there fluid in this joint" and marginal for "does this signal
+reach the meniscal surface". The model inherited the teacher's easy cases and not its hard
+ones.
+
+**Where the remaining headroom is**, in order:
+1. **Resolution and slice count** for the small findings — the four worst targets are all
+   small-lesion tasks. This is a hardware ceiling, not a design one.
+2. **Better weak labels** — every target is bounded above by the teacher, and the four
+   worst model targets are ones the teacher scores 0.74–0.89 on. The information exists in
+   the reports; the image model is failing to extract it from pixels, so more label
+   quality helps less here than more resolution.
+3. Longer training with stronger regularisation, and a second backbone in the ensemble.
 
 ## Submission
 
