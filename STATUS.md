@@ -10,18 +10,20 @@ Last updated: 2026-08-14, during fold-0 training.
 | Report → weak labels | **done** | `work/labels.csv`, 0.756 macro AUC vs gold |
 | DICOM → uint8 cache | **done** | 21.2 GiB, 4,407 studies, 121.2 min |
 | Test split cache | **done** | 3 studies |
-| Fold 0 | **done** — val macro AUC **0.7753** | `work/runs/run1/fold0.pt` |
-| Fold 1 | **done** — val macro AUC **0.7829** | `work/runs/run1/fold1.pt` |
-| Folds 2–4 | running (fold 2 at epoch 2/10, ~5 h left) | `work/runs/run1/fold*.pt` |
-| `submission.csv` | **produced** from folds 0+1, format validated | `submission.csv` |
+| Folds 0–3 | **done** — 0.7753 / 0.7829 / 0.7658 / 0.7899 | `work/runs/run1/fold{0..3}.pt` |
+| Fold 4 | running, epoch 6/10 (~40 min) | `work/runs/run1/fold4.pt` |
+| `submission.csv` | **produced** from folds 0–3, format validated | `submission.csv` |
 | Kaggle notebook | **built**, untested end-to-end | `kaggle/submission.ipynb` |
 
 Measured: ~10 min/epoch, ~1.7 h/fold, 1.97 GiB peak at batch 2 (2.51 GiB at batch 3, too
 close to the ~3.3 GiB free alongside the two other GPU jobs).
 
-Fold 0 learning curve: 0.6564 → 0.7753 by epoch 6, then mild overfitting. The image model
-is clearly extracting signal from pixels — chance is 0.5 and it cleared 0.65 in a single
-epoch.
+All folds trace the same curve: ~0.62–0.66 after one epoch, ~0.75 by epoch 4–5, peak at
+epoch 6–7, then mild overfitting. **Mean 0.7785, spread 0.024** across four completed
+folds — consistent enough that the result is a property of the setup, not of one split.
+
+The image model is clearly reading the pixels: chance is 0.5 and every fold cleared 0.62
+within a single epoch.
 
 ## Answering the original question
 

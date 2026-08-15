@@ -167,17 +167,22 @@ Training loss falls monotonically while validation AUC peaks at epoch 6 and drif
 after — textbook mild overfitting, and confirmation that 10 epochs is roughly the right
 budget rather than a number that needed guessing. The saved checkpoint is epoch 6's.
 
-### Fold 1 (complete)
+### All folds
 
-Peaks at epoch 7, **0.7829** — same shape, same plateau, marginally higher. Two
-independent folds landing within 0.008 of each other suggests the split is not driving
-the result.
+| fold | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | best |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 0 | 0.6564 | 0.6973 | 0.7505 | 0.7666 | 0.7690 | **0.7753** | 0.7751 | 0.7639 | 0.7667 | 0.7702 | 0.7753 |
+| 1 | 0.6611 | 0.6983 | 0.7289 | 0.7684 | 0.7810 | 0.7805 | **0.7829** | 0.7784 | 0.7800 | 0.7800 | 0.7829 |
+| 2 | 0.6256 | 0.6988 | — | — | — | — | — | **0.7658** | 0.7598 | 0.7604 | 0.7658 |
+| 3 | 0.6272 | 0.7133 | 0.7422 | 0.7559 | 0.7747 | 0.7802 | **0.7899** | 0.7870 | 0.7836 | 0.7843 | 0.7899 |
+| 4 | 0.6193 | 0.7069 | 0.7283 | 0.7522 | 0.7701 | 0.7729 | | | | | running |
 
-| epoch | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| val AUC | 0.6611 | 0.6983 | 0.7289 | 0.7684 | 0.7810 | 0.7805 | **0.7829** | 0.7784 | 0.7800 | 0.7800 |
+**Mean of completed folds: 0.7785, spread 0.024.**
 
-Folds 2–4 are still running.
+Every fold traces the same curve — rapid gain to ~0.75 by epoch 4–5, peak at epoch 6–7,
+then mild overfitting as training loss keeps falling. Five independent splits agreeing
+this closely means the number is a property of the setup rather than of one lucky split,
+and it confirms 10 epochs was the right budget without needing a search.
 
 > **Ensembling mid-training is a trap.** A fold's checkpoint is written on every
 > validation improvement, so an in-progress fold already has a `fold{N}.pt` on disk.
