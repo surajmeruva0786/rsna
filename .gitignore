@@ -89,3 +89,8 @@ desktop.ini
 .env.*
 kaggle.json
 *.pem
+
+# MCP config. Ignored rather than committed because the token-auth variant puts a live
+# Kaggle bearer token inline in "args", and this repository is public. Copy
+# .mcp.json.example to .mcp.json locally; prefer the authorize tool over an inline token.
+.mcp.json
