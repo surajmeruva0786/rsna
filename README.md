@@ -33,10 +33,16 @@ Competition brief, data description, and rules are in [`overview.txt`](overview.
 │   ├── qc_cache.py         # visual QC montage of the cache
 │   ├── model.py            # slot encoder + masked attention pooling
 │   ├── train.py            # cross-validated training, CUDA required
-│   └── predict.py          # fold ensemble -> submission.csv
+│   ├── predict.py          # fold ensemble -> submission.csv
+│   ├── evaluate.py         # OOF metrics incl. bootstrapped gold-subset CI
+│   └── run_after_preprocess.sh  # chains preprocessing -> training
 ├── kaggle/
+│   ├── README.md           # how to actually submit
 │   ├── kaggle_inference.py # self-contained offline inference
-│   └── build_notebook.py   # wraps the above into submission.ipynb
+│   ├── build_notebook.py   # wraps the above into submission.ipynb
+│   └── submission.ipynb    # generated; the artefact Kaggle scores
+├── submission.csv          # format check only (3 public example studies)
+└── .mcp.json.example       # Kaggle MCP config (copy to .mcp.json; never commit a token)
 ├── overview.txt            # competition overview
 ├── data.txt                # data description
 └── rules.txt               # competition rules
@@ -119,13 +125,22 @@ Slot layout, slice ordering and per-slice normalisation are in
 ## Training and submission
 
 ```bash
-python scripts/train.py --folds 5 --only-fold 0 --epochs 10 --batch 3 --accum 5 --out run1
-python scripts/predict.py --run run1 --split test --out submission.csv
-python kaggle/build_notebook.py     # -> kaggle/submission.ipynb
+python scripts/train.py --folds 5 --epochs 10 --batch 2 --accum 8 --out run1   # ~9 h
+python scripts/evaluate.py --run run1                       # OOF + gold-subset CI
+python scripts/predict.py --run run1 --split test --folds 0,1,2,3,4 --out submission.csv
+python kaggle/build_notebook.py                             # -> kaggle/submission.ipynb
 ```
 
 CUDA is required and asserted — no silent CPU fallback. Architecture, the reason
 horizontal flip is excluded, and results are in [`MODEL.md`](MODEL.md).
+
+Two operational notes that cost real time to learn:
+
+- **Launch long runs detached** (`Start-Process` on Windows). Shell-parented background
+  jobs get killed with their parent; one training run died three minutes in.
+- **Pass `--folds` explicitly to `predict.py`.** Checkpoints are written on every
+  validation improvement, so a still-training fold already has a `fold{N}.pt` on disk and
+  the default glob would silently average a half-trained model into the ensemble.
 
 > **Submission note:** this is a code competition. Kaggle scores a *notebook* run against
 > ~1,300 hidden test studies; the local `submission.csv` only validates the format against
@@ -148,6 +163,23 @@ test labels were. The weak-label figure measures agreement with the report label
 is itself only 0.7558 against gold. Full breakdown, including which targets the model beats
 its own teacher on and why, is in [`MODEL.md`](MODEL.md); current state and remaining work
 in [`STATUS.md`](STATUS.md).
+
+**0.6910 is decisively above chance and is not a winning score**, and nothing has been
+submitted yet, so there is no leaderboard position — only this offline estimate. The
+binding constraint is resolution: the model beats its own text teacher on diffuse findings
+and loses on small localised ones, which is what 16 slices at 224×224 on a 4 GiB card
+predicts.
+
+## Pipeline at a glance
+
+| Stage | Input | Output | Cost |
+| --- | --- | --- | --- |
+| Extract + verify | 265 GB zip | 819,640 files | (pre-existing) |
+| Report → weak labels | `train.csv` | `work/labels.csv` | seconds |
+| DICOM → cache | 570 GB tree | 19.8 GiB memmap | 121 min |
+| Train 5 folds | cache + labels | `fold{0..4}.pt` (85 MB) | ~9 h |
+| Predict | cache + folds | `submission.csv` | seconds |
+| Kaggle notebook | DICOM + folds | scored submission | ~1.4 h on Kaggle |
 
 ## Getting the data
 

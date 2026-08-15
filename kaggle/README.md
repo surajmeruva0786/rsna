@@ -4,6 +4,27 @@ Kaggle scores a **notebook**, not a file. The `submission.csv` in the repo root 
 format check against the three public example studies and carries no leaderboard
 meaning — it cannot be uploaded. `submission.ipynb` is the artefact that scores.
 
+## 0. Optional: the Kaggle MCP server
+
+Kaggle exposes an MCP endpoint that lets a client drive uploads and submissions directly.
+Copy `.mcp.json.example` to `.mcp.json` in the repo root and restart the client:
+
+```json
+{ "mcpServers": { "kaggle": { "command": "npx",
+  "args": ["mcp-remote", "https://www.kaggle.com/mcp"] } } }
+```
+
+Then call the server's `authorize` tool. **Prefer this over token auth** — the token
+variant puts a live bearer token inline in `args`, and this repository is public, which is
+why `.mcp.json` is gitignored and only the example is committed.
+
+Note that the advertised `start_competition_submission_upload` / `submit_to_competition`
+tools are a **file-upload** flow. This is a code competition (`overview.txt`: *"Submissions
+to this competition must be made through Notebooks"*), so a raw `submission.csv` is
+unlikely to be accepted — and the one in this repo covers only the three public example
+studies, so it would score as noise even if it were. The notebook route below is the real
+path; MCP is useful mainly for pushing the Dataset and the kernel.
+
 ## 1. Upload the weights as a Dataset
 
 Internet is disabled during scoring, so every weight has to arrive as an attached

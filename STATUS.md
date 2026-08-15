@@ -7,6 +7,7 @@ Last updated: 2026-08-14, during fold-0 training.
 | Stage | State | Artefact |
 | --- | --- | --- |
 | Data extraction + verification | done (pre-existing) | 819,640 files, CRC-sampled |
+| Disk-space anomaly in `DATASET.md` | **resolved** — space returned on its own | `F:` 1,089 GiB free |
 | Report → weak labels | **done** | `work/labels.csv`, 0.756 macro AUC vs gold |
 | DICOM → uint8 cache | **done** | 21.2 GiB, 4,407 studies, 121.2 min |
 | Test split cache | **done** | 3 studies |
@@ -25,6 +26,12 @@ limit.
 **Remaining to actually submit:** upload `work/kaggle_dataset/` (85 MB, five folds) as a
 Kaggle Dataset, attach it to the notebook, internet off, run all. See
 [`kaggle/README.md`](kaggle/README.md).
+
+The Kaggle MCP server is configured (`.mcp.json.example` → copy to `.mcp.json`, then call
+its `authorize` tool) and can drive the Dataset and kernel pushes. Its
+`submit_to_competition` tool is a file-upload flow, which this code competition is unlikely
+to accept — and the local `submission.csv` covers only three public example studies, so it
+would score as noise regardless.
 
 ## Results
 

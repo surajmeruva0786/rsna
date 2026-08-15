@@ -135,7 +135,25 @@ clean CRC sample, the archive is now redundant and safe to delete; doing so reco
 reported zero outstanding entries and the CRC sample came back clean. The extracted
 tree is now the only copy of the data on this machine.
 
-### Open issue: 265 GB was not reclaimed
+### Resolved: the 265 GB came back
+
+**This issue is closed.** `F:` now reports **1,089.2 GiB free** against the 761.83 GiB
+recorded below — a gain of ~327 GiB, which covers the archive's 246.8 GiB with room to
+spare. No action was taken to reclaim it, so the blocks were released on their own,
+consistent with the shadow-copy explanation below: a snapshot holding the deleted file's
+extents was aged out or overwritten, and the space returned without intervention.
+
+Current volume state:
+
+| Drive | Used | Free |
+| --- | --- | --- |
+| `F:` (dataset, 7200rpm SATA HDD) | 773.8 GiB | 1,089.2 GiB |
+| `C:` (NVMe; holds the training cache) | 189.7 GiB | 47.8 GiB |
+
+The investigation below is kept because the reasoning was sound and the diagnostic steps
+are worth repeating if it recurs — not because the problem is outstanding.
+
+### Original investigation (historical)
 
 Deleting the archive did **not** return its space to the volume. Free space on `F:`
 read 761.83 GiB both before and after the delete, and the file is genuinely unlinked
@@ -178,6 +196,23 @@ If shadow storage on `F:` accounts for the missing 265 GB, reclaiming it means
 deleting the relevant snapshots (or reducing `shadowstorage` maxsize) — a decision to
 make deliberately, since it discards restore points. **This does not affect the
 dataset**, which is fully extracted and verified; it only concerns free space.
+
+> The space was subsequently released without any of this being done — see
+> "Resolved: the 265 GB came back" above.
+
+## Derived artefacts
+
+The extracted tree is no longer read during training. One preprocessing pass reduces it
+to a fixed-shape `uint8` cache on the NVMe volume, and every epoch reads only that:
+
+| Artefact | Location | Size |
+| --- | --- | --- |
+| Training cache | `C:\rsna_cache\train_224.u8` | 19.77 GiB |
+| Test cache | `C:\rsna_cache\test_224.u8` | 0.01 GiB |
+| Fold checkpoints | `work/runs/run1/fold{0..4}.pt` | 85 MB total |
+
+See [`PREPROCESSING.md`](PREPROCESSING.md). None of it is tracked in git; all of it
+regenerates from the scripts.
 
 ## Reproducing the download
 
