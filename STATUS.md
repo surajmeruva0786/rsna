@@ -13,7 +13,18 @@ Last updated: 2026-08-14, during fold-0 training.
 | Training, 5 folds × 10 epochs | **done** (~9 h) | `work/runs/run1/fold{0..4}.pt` |
 | OOF evaluation | **done** | `scripts/evaluate.py` |
 | `submission.csv` | **produced** from all 5 folds, format validated | `submission.csv` |
-| Kaggle notebook | **built**, untested end-to-end | `kaggle/submission.ipynb` |
+| Kaggle notebook | **built and executed end-to-end** | `kaggle/submission.ipynb` |
+
+The notebook's code path was run locally against the real dataset and reproduces
+`scripts/predict.py` to 4.6e-08 — float noise — despite decoding raw DICOM rather than
+reading the cache. That equivalence is the check that matters: it proves inference-time
+preprocessing matches training, which is where a model that validates well otherwise
+quietly scores near chance. Measured ~4 s/study → ~1.4 h for ~1,300 studies, against a 9 h
+limit.
+
+**Remaining to actually submit:** upload `work/kaggle_dataset/` (85 MB, five folds) as a
+Kaggle Dataset, attach it to the notebook, internet off, run all. See
+[`kaggle/README.md`](kaggle/README.md).
 
 ## Results
 
@@ -69,21 +80,34 @@ Four stages, each committed and documented separately:
 
 ## Open items and honest caveats
 
-**The leaderboard claim cannot be made.** This is a code competition: Kaggle scores a
-notebook run against ~1,300 hidden studies, so no locally produced CSV can be submitted.
-Separately, training runs on a **Quadro P1000, 4 GiB Pascal**, shared with two other jobs
-— roughly 1/40th the throughput available to competitive teams. The pipeline is complete
-and sound; a top placement is not something this hardware can be promised to deliver.
+**The pipeline is complete; the leaderboard claim is not supportable.** Measured
+performance is **0.6910 macro AUC** on the gold studies, 95% CI [0.6329, 0.7470]. That is
+decisively better than chance and is not a winning score. Training ran on a **Quadro
+P1000, 4 GiB Pascal** shared with two other jobs — roughly 1/40th the throughput
+competitive teams bring — and the per-target breakdown shows that constraint biting
+exactly where expected, on the small localised findings.
 
 **The labels are a noisy proxy.** Gold labels are image-derived and sometimes contradict
 their own report — one gold study reads `Effusion=0` against a report stating
-`Moderate joint effusion, distended suprapatellar bursa`. The image model therefore trains
-against a teacher that is itself ~0.756 against the annotation process that will score it.
-The OOF figure to trust is the gold-subset one, not the weak-label one.
+`Moderate joint effusion, distended suprapatellar bursa`. The image model trains against a
+teacher that is itself 0.7558 against the annotation process that will score it.
 
-**Untested end-to-end:** the Kaggle notebook compiles and its logic mirrors the local
-path, but it has not yet been run against real Kaggle paths. That needs a trained
-checkpoint uploaded as a Dataset.
+**Nothing has been submitted.** The notebook is built and tested but the weights Dataset
+has not been uploaded and no Kaggle run has been made, so there is no leaderboard
+position — only the offline estimate above.
+
+## If the work continues
+
+In descending order of expected return:
+
+1. **Resolution and slice count.** The four worst targets — Medial Meniscus, Fracture,
+   MCL, ACL — are all small-lesion tasks, and the teacher scores 0.74–0.89 on them, so the
+   information exists and the model simply cannot resolve it. This is the binding
+   constraint and it is hardware, not design.
+2. **A second backbone in the ensemble**, and longer training with stronger
+   regularisation. Cheap, modest gains.
+3. **Better weak labels.** Helps less than it looks: every target is capped by the
+   teacher, but the targets the model fails are ones the teacher already handles well.
 
 ## Bugs worth remembering
 

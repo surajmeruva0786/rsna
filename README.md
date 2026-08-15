@@ -129,7 +129,25 @@ horizontal flip is excluded, and results are in [`MODEL.md`](MODEL.md).
 
 > **Submission note:** this is a code competition. Kaggle scores a *notebook* run against
 > ~1,300 hidden test studies; the local `submission.csv` only validates the format against
-> the three public example studies. `kaggle/submission.ipynb` is the artefact that scores.
+> the three public example studies. `kaggle/submission.ipynb` is the artefact that scores —
+> see [`kaggle/README.md`](kaggle/README.md).
+
+## Results
+
+| | macro AUC |
+| --- | --- |
+| OOF, weak labels (4,407 studies) | 0.7748 |
+| **OOF, 58 gold studies** | **0.6910** — 95% CI [0.6329, 0.7470] |
+| Report labeller, same 58 | 0.7558 *(training-time only)* |
+| Chance | 0.5000 |
+
+Folds: 0.7753 / 0.7829 / 0.7658 / 0.7899 / 0.7776 (spread 0.024).
+
+The gold figure is the honest estimate — those labels were made by reading images, as the
+test labels were. The weak-label figure measures agreement with the report labeller, which
+is itself only 0.7558 against gold. Full breakdown, including which targets the model beats
+its own teacher on and why, is in [`MODEL.md`](MODEL.md); current state and remaining work
+in [`STATUS.md`](STATUS.md).
 
 ## Getting the data
 
